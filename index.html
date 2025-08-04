@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Puzzle Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .game-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+            margin-top: 20px;
+        }
+        
+        .image-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .corner-image {
+            max-width: 150px;
+            height: auto;
+            border: 2px solid #333;
+            border-radius: 5px;
+        }
+        
+        #image-left {
+            align-self: flex-start;
+        }
+        
+        #image-right {
+            align-self: flex-end;
+        }
+        
+        .game-board {
+            width: 400px;
+            height: 400px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 2px;
+            background-color: #333;
+            border: 5px solid #333;
+            border-radius: 5px;
+            margin: 0 20px;
+        }
+        
+        .tile {
+            background-color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            transition: all 0.2s;
+            user-select: none;
+        }
+        
+        .tile:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .empty {
+            background-color: #333;
+        }
+        
+        .stats {
+            width: 400px;
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .stat-box {
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        
+        .controls {
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 400px;
+        }
+        
+        .modal h2 {
+            margin-top: 0;
+            color: #4CAF50;
+        }
+        
+        .modal-stats {
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        
+        .close-modal {
+            background-color: #4CAF50;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Classic Puzzle Game</h1>
+    
+    <div class="image-container">
+        <img id="image-left" class="corner-image" src="1.jpg" alt="Left Image">
+        <img id="image-right" class="corner-image" src="2.jpg" alt="Right Image">
+    </div>
+    
+    <div class="game-container">
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-label">Time</div>
+                <div id="time" class="stat-value">00:00</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Moves</div>
+                <div id="score" class="stat-value">0</div>
+            </div>
+        </div>
+        
+        <div class="game-board" id="board"></div>
+        
+        <div class="controls">
+            <button id="shuffle-btn">Shuffle</button>
+            <button id="new-game-btn">New Game</button>
+        </div>
+    </div>
+    
+    <div class="modal" id="win-modal">
+        <div class="modal-content">
+            <h2>Congratulations!</h2>
+            <p>You solved the puzzle!</p>
+            <div class="modal-stats">
+                <p>Time: <span id="final-time"></span></p>
+                <p>Moves: <span id="final-score"></span></p>
+            </div>
+            <button class="close-modal" id="close-modal">Play Again</button>
+        </div>
+    </div>
+    
+    <script>
+        // Game variables
+        let board = [];
+        let emptyPos = { row: 3, col: 3 };
+        let isPlaying = false;
+        let startTime;
+        let timerInterval;
+        let moveCount = 0;
+        
+        // DOM elements
+        const boardElement = document.getElementById('board');
+        const timeElement = document.getElementById('time');
+        const scoreElement = document.getElementById('score');
+        const shuffleBtn = document.getElementById('shuffle-btn');
+        const newGameBtn = document.getElementById('new-game-btn');
+        const winModal = document.getElementById('win-modal');
+        const finalTimeElement = document.getElementById('final-time');
+        const finalScoreElement = document.getElementById('final-score');
+        const closeModalBtn = document.getElementById('close-modal');
+        
+        // Initialize the game
+        function initGame() {
+            // Create the solved board
+            board = [];
+            let value = 1;
+            for (let row = 0; row < 4; row++) {
+                board[row] = [];
+                for (let col = 0; col < 4; col++) {
+                    if (row === 3 && col === 3) {
+                        board[row][col] = 0; // Empty space
+                    } else {
+                        board[row][col] = value++;
+                    }
+                }
+            }
+            
+            emptyPos = { row: 3, col: 3 };
+            moveCount = 0;
+            updateScore();
+            
+            // Render the board
+            renderBoard();
+        }
+        
+        // Shuffle the board
+        function shuffleBoard() {
+            // Reset timer and score
+            resetTimer();
+            moveCount = 0;
+            updateScore();
+            
+            // Perform random moves to shuffle
+            const shuffleMoves = 500;
+            let lastMove = null;
+            
+            for (let i = 0; i < shuffleMoves; i++) {
+                const possibleMoves = getValidMoves();
+                
+                // Filter out the reverse of the last move to prevent undo
+                const filteredMoves = possibleMoves.filter(move => {
+                    if (!lastMove) return true;
+                    return !(move.row === -lastMove.row && move.col === -lastMove.col);
+                });
+                
+                const randomMove = filteredMoves[Math.floor(Math.random() * filteredMoves.length)];
+                const tileRow = emptyPos.row + randomMove.row;
+                const tileCol = emptyPos.col + randomMove.col;
+                
+                // Move the tile
+                board[emptyPos.row][emptyPos.col] = board[tileRow][tileCol];
+                board[tileRow][tileCol] = 0;
+                emptyPos = { row: tileRow, col: tileCol };
+                
+                lastMove = randomMove;
+            }
+            
+            renderBoard();
+            startTimer();
+            isPlaying = true;
+        }
+        
+        // Get valid moves from current empty position
+        function getValidMoves() {
+            const moves = [];
+            
+            if (emptyPos.row > 0) moves.push({ row: -1, col: 0 }); // Up
+            if (emptyPos.row < 3) moves.push({ row: 1, col: 0 });  // Down
+            if (emptyPos.col > 0) moves.push({ row: 0, col: -1 }); // Left
+            if (emptyPos.col < 3) moves.push({ row: 0, col: 1 });  // Right
+            
+            return moves;
+        }
+        
+        // Render the board
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 4; col++) {
+                    const tileValue = board[row][col];
+                    const tile = document.createElement('div');
+                    tile.className = tileValue === 0 ? 'tile empty' : 'tile';
+                    
+                    if (tileValue !== 0) {
+                        tile.textContent = tileValue;
+                        tile.addEventListener('click', () => handleTileClick(row, col));
+                    }
+                    
+                    boardElement.appendChild(tile);
+                }
+            }
+        }
+        
+        // Handle tile click
+        function handleTileClick(row, col) {
+            if (!isPlaying) return;
+            
+            // Check if the clicked tile is adjacent to the empty space
+            if ((Math.abs(row - emptyPos.row) === 1 && col === emptyPos.col) || 
+                (Math.abs(col - emptyPos.col) === 1 && row === emptyPos.row)) {
+                
+                // Move the tile
+                board[emptyPos.row][emptyPos.col] = board[row][col];
+                board[row][col] = 0;
+                emptyPos = { row, col };
+                
+                // Update move count
+                moveCount++;
+                updateScore();
+                
+                // Re-render the board
+                renderBoard();
+                
+                // Check if puzzle is solved
+                if (isPuzzleSolved()) {
+                    endGame();
+                }
+            }
+        }
+        
+        // Check if puzzle is solved
+        function isPuzzleSolved() {
+            let value = 1;
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 4; col++) {
+                    if (row === 3 && col === 3) {
+                        if (board[row][col] !== 0) return false;
+                    } else {
+                        if (board[row][col] !== value++) return false;
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // Timer functions
+        function startTimer() {
+            startTime = new Date();
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+        
+        function resetTimer() {
+            clearInterval(timerInterval);
+            timeElement.textContent = '00:00';
+        }
+        
+        function updateTimer() {
+            const currentTime = new Date();
+            const elapsed = Math.floor((currentTime - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const seconds = (elapsed % 60).toString().padStart(2, '0');
+            timeElement.textContent = `${minutes}:${seconds}`;
+        }
+        
+        function getFormattedTime() {
+            return timeElement.textContent;
+        }
+        
+        // Score functions
+        function updateScore() {
+            scoreElement.textContent = moveCount;
+        }
+        
+        // End game
+        function endGame() {
+            clearInterval(timerInterval);
+            isPlaying = false;
+            
+            // Show win modal
+            finalTimeElement.textContent = getFormattedTime();
+            finalScoreElement.textContent = moveCount;
+            winModal.style.display = 'flex';
+        }
+        
+        // Event listeners
+        shuffleBtn.addEventListener('click', shuffleBoard);
+        
+        newGameBtn.addEventListener('click', () => {
+            initGame();
+            shuffleBoard();
+        });
+        
+        closeModalBtn.addEventListener('click', () => {
+            winModal.style.display = 'none';
+            initGame();
+            shuffleBoard();
+        });
+        
+        // Initialize the game on load
+        initGame();
+    </script>
+</body>
+</html>
